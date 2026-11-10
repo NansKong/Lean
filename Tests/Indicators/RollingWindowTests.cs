@@ -623,6 +623,54 @@ def rolling_window_with_custom_data_type():
             }
         }
 
+        [TestCase(4, false)]
+        [TestCase(5, false)]
+        [TestCase(6, false)]
+        [TestCase(4, true)]
+        [TestCase(5, true)]
+        public void AddingAfterGrowingOverwrittenWindowPreservesElementOrder(int totalAdds, bool resizeUsingIndexer)
+        {
+            var window = new RollingWindow<int>(3);
+            for (var i = 1; i <= totalAdds; i++)
+            {
+                window.Add(i);
+            }
+
+            var expected = window.ToList();
+            if (resizeUsingIndexer)
+            {
+                Assert.AreEqual(0, window[4]);
+            }
+            else
+            {
+                window.Size = 5;
+            }
+
+            CollectionAssert.AreEqual(expected, window);
+            for (var i = totalAdds + 1; i <= totalAdds + 8; i++)
+            {
+                expected.Insert(0, i);
+                if (expected.Count > window.Size)
+                {
+                    var removed = expected[expected.Count - 1];
+                    expected.RemoveAt(expected.Count - 1);
+                    window.Add(i);
+                    Assert.AreEqual(removed, window.MostRecentlyRemoved);
+                }
+                else
+                {
+                    window.Add(i);
+                }
+
+                CollectionAssert.AreEqual(expected, window);
+                Assert.AreEqual(i, window.Samples);
+                for (var j = 0; j < expected.Count; j++)
+                {
+                    Assert.AreEqual(expected[j], window[j]);
+                }
+            }
+        }
+
         [Test]
         public void MultipleResizesOnOverwrittenWindowPreserveElementOrder()
         {
